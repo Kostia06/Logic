@@ -1,0 +1,17 @@
+@i
+javac
+@f
+src
+.java
+@r
+cd
+src
+&& 
+java
+Main
+@r
+rm
+@f
+src
+.class
+@r
