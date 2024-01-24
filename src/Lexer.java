@@ -12,7 +12,6 @@ class Lexer{
     public ArrayList<Object> ids = new ArrayList<Object>();
 
     public Lexer(String _logic){
-        System.out.println("\n"+ Main.PURPLE +"Lexing " + _logic  + Main.RESET);
         logic = _logic;
         ops_init();
         lex();

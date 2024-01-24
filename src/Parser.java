@@ -23,13 +23,14 @@ class Parser{
             Object obj = parse(objects_copy);
             boolean result = obj.result;
 
+            System.out.print(Main.PURPLE+"Lexing: " + Main.logic);
             if(result){ System.out.println(Main.GREEN);}
             else{ System.out.println(Main.RED); }
-            
+           
             for(Object id: ids_copy){ System.out.print(id.name + ": " + id.result + "\t"); }
             System.out.println();
             for(String op: ops){ System.out.println(op); }
-            System.out.println("Result: " + result);
+            System.out.println("Result: " + result + "\n");
             if(result){ truths++; }
             else{ falses++; }
 
