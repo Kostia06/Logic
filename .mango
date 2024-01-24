@@ -9,6 +9,7 @@ src
 && 
 java
 Main
+../logic.txt
 @r
 rm
 @f

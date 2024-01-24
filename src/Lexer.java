@@ -1,161 +1,139 @@
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.lang.Math;
 
-
-enum TokenType{
-    ID, RESULT, 
-    OPEN_PAREN, CLOSE_PAREN,
-    NOT,
-    AND, OR, XOR,
-    NOTHING
-};
-
-class Keyword{
-    public char value;
-    public TokenType  type;
-    public Keyword(char value, TokenType type){
-        this.value = value;
-        this.type = type;
-    }
-};
-
-
-class Object{
-    ArrayList<Boolean> table;
-    boolean result;
-    String value;
-    TokenType type;
-
-    public Object(String value, TokenType type){
-        this.value = value;
-        this.type = type;
-        table = new ArrayList<Boolean>();
-    }
-
-    void create_table(int size, int increment){
-        boolean item = true;
-        int count = 0;
-        double max = size / increment;
-        for(int i = 0; i < size; i++){
-            if(count >= max){ 
-                item = !item;
-                count = 0;
-            }
-            count++;
-            table.add(item);
-        }
-    }
-
-    void set_result(int index){ 
-        if(type == TokenType.ID){ result = table.get(index); }
-    }
-
-    boolean get_value(){ return result; }
-
-}
-
-
 class Lexer{
-    ArrayList<Keyword> keywords = new ArrayList<Keyword>();
-    ArrayList<Object> objects = new ArrayList<Object>();
-    ArrayList<Object> identifiers = new ArrayList<Object>();
-    public String GREEN = "\033[1m\033[32m";
-    public String RED = "\033[1m\033[31m";
-    public String PURPLE = "\033[1m\033[35m";
-    public String RESET = "\u001B[0m";
+    private String logic;
+    private int index = 0;
+    private int largest_op = 3;
+    private char c = ' '; 
+    public static ArrayList<Operator> operators = new ArrayList<Operator>();
+    public ArrayList<Object> objects = new ArrayList<Object>();
+    public ArrayList<Object> ids = new ArrayList<Object>();
 
-    void keywords_init(){
-        // PARAN
-        keywords.add(new Keyword('(', TokenType.OPEN_PAREN));
-        keywords.add(new Keyword(')', TokenType.CLOSE_PAREN));
-        // NOT
-        keywords.add(new Keyword('~', TokenType.NOT));
-        keywords.add(new Keyword('-', TokenType.NOT));
-        // AND
-        keywords.add(new Keyword('&', TokenType.AND));
-        keywords.add(new Keyword('^', TokenType.AND));
-        // OR
-        keywords.add(new Keyword('|', TokenType.OR));
-        keywords.add(new Keyword('v', TokenType.OR));
-        keywords.add(new Keyword('V', TokenType.OR));
-        // XOR
-        keywords.add(new Keyword('o', TokenType.XOR));
-        keywords.add(new Keyword('O', TokenType.XOR));
-        keywords.add(new Keyword('0', TokenType.XOR));
-        // NOTHING
-        keywords.add(new Keyword('\0', TokenType.NOTHING));
+    public Lexer(String _logic){
+        System.out.println("\n"+ Main.PURPLE +"Lexing " + _logic  + Main.RESET);
+        logic = _logic;
+        ops_init();
+        lex();
     }
 
-    TokenType is_keyword(char c){
-        for(Keyword keyword: keywords){ if(c == keyword.value){ return keyword.type; } }
-        return TokenType.NOTHING;
-    }
+    private boolean handle_op(){
+        String str = "";
+        // getting 
+        for(int i = 0; i < Math.min(largest_op, logic.length()-index); i++){ str += logic.charAt(index+i); }
+        // checking
+        int str_len = str.length();
+        for(int i = 0; i < str_len; i++){
+            for(Operator op: operators){
+                if(op.find(str)){ 
+                    Object obj;
+                    if(op.type == OP_TYPE.CLOSE_PAREN){
+                        ArrayList<Object> children = new ArrayList<Object>();
+                        while(objects.size() > 0){
+                            Object obj_child = objects.remove(objects.size()-1);
+                            if(obj_child.type == OP_TYPE.OPEN_PAREN){ break; }
+                            children.add(0,obj_child);
+                        }
+                        obj = new Object("()", OP_TYPE.PAREN);
+                        obj.children = children;
 
-    void objects_init(String code){
-        int i = 0;
-        while(i < code.length()){
-            char c = code.charAt(i);
-            // check if c is a keyword
-            if(is_keyword(c) != TokenType.NOTHING){
-                Object obj = new Object(Character.toString(c), is_keyword(c));
-                objects.add(obj);
-                i++;
-            }
-            // check if c is a space
-            else if(c == ' '){ i++; }
-            // check if c is a identifier
-            else{
-                String id = "";
-                while(i < code.length()){
-                    c = code.charAt(i);        
-                    if(is_keyword(c) != TokenType.NOTHING || c == ' '){ break; }
-                    id += c;
-                    i++;
-                }
-                boolean found = false;
-                Object object_found = new Object("", TokenType.NOTHING);
-                for(Object identifier: identifiers){
-                    if(identifier.value.equals(id)){ 
-                        found = true; 
-                        object_found = identifier;
-                        break; 
                     }
+                    else{
+                        obj = new Object(str, op.type);
+                    }
+                    index += str.length();
+                    c = logic.charAt(index-1);
+                    objects.add(obj); 
+                    return true; 
                 }
-                if(!found){ 
-                    Object obj = new Object(id, TokenType.ID);
-                    identifiers.add(obj); 
-                    objects.add(obj);
-                }
-                else{ objects.add(object_found); }
             }
+            str = str.substring(0, str.length()-1);
+        }
+        return false;
+    }
 
+    private boolean handle_id(){
+        String str = "";
+        while(index < logic.length() && Character.isLetterOrDigit(c)){
+            c = logic.charAt(index++);
+            if(!Character.isLetterOrDigit(c)){ break; }
+            str += c;
         }
-                
-    }
-        
-    void create_table(){
-        int size = (int)Math.pow(2, identifiers.size());
-        int increment = 2;
-        for(int i = 0; i < identifiers.size(); i++){
-            Object obj = identifiers.get(i);
-            obj.create_table(size, increment);
-            increment *= 2;
+        if(str.length() > 0){
+            Object obj = Object.find_object(ids, str);
+            if(obj == null){
+                obj = new Object(str, OP_TYPE.ID);
+                ids.add(obj);
+            }
+            objects.add(obj);
+            if(index < logic.length()){ index--; }
+            return true; 
         }
+        return false;
+    } 
+
+    private void lex(){
+        while(index < logic.length()){
+            c = logic.charAt(index);
+            if(handle_op() || handle_id()){ continue; }
+            else if(c == ' ' || c == '\t'){ index++; continue; }
+        }  
     }
-    
+
     public void print_objects(){
-        for(Object obj: objects){
-            System.out.println(obj.value + "\t" + obj.type);
-        }
+        System.out.println(Main.PURPLE + "Objects:" + Main.RESET);
+        for(Object obj: objects){ System.out.println(obj.name + " " + obj.type); }
     }
 
 
-    public Lexer(String code){
-        System.out.println(PURPLE);
-        System.out.println("\tLexing: " + code);
-        System.out.println(RESET);
-        keywords_init(); 
-        objects_init(code);
-        create_table();
+    public static final boolean find_and_apply(OP_TYPE type, Object left, Object right){
+        for(Operator op: operators){
+            if(op.type == type){ return op.apply(left, right); }
+        }
+        return false;
+    }
+
+    private void ops_init(){
+        operators.add( Operator.new_op(
+            OP_TYPE.OPEN_PAREN,
+            new int[][]{ {-1,-1,-1}, {-1,-1,-1}, {-1,-1,-1}, {-1,-1,-1} },
+            "("
+        ));
+        operators.add( Operator.new_op(
+            OP_TYPE.CLOSE_PAREN,
+            new int[][]{ {-1,-1,-1}, {-1,-1,-1}, {-1,-1,-1}, {-1,-1,-1} },
+            ")"
+        ));
+        operators.add( Operator.new_op(
+                OP_TYPE.NOT,
+                new int[][]{ {-1, -1, -1}, {1, -1, -1}, {-1, -1, -1}, {-1, -1, -1} }, 
+                "-", "~", "!", "not"
+        ));
+        operators.add( Operator.new_op(
+                OP_TYPE.AND,
+                new int[][]{ {1, 1, 1}, {1, 0, 0}, {0, 1, 0}, {0, 0, 0} }, 
+                "&", "^", "and"
+        ));
+        operators.add( Operator.new_op(
+                OP_TYPE.OR,
+                new int[][]{ {1, 1, 1}, {1, 0, 1}, {0, 1, 1}, {0, 0, 0} }, 
+                "|", "v", "V", "or"
+        ));
+        operators.add( Operator.new_op(
+                OP_TYPE.XOR,
+                new int[][]{ {1, 1, 0}, {1, 0, 1}, {0, 1, 1}, {0, 0, 0} }, 
+                "0", "o", "O", "xor"
+        ));
+        operators.add( Operator.new_op(
+                OP_TYPE.IF,
+                new int[][]{ {1, 1, 1}, {1, 0, 0}, {0, 1, 1}, {0, 0, 1} },
+                ">", "->", "if"
+        ));
+        operators.add( Operator.new_op(
+                OP_TYPE.IF_AND_ONLY_IF,
+                new int[][]{ {1, 1, 1}, {1, 0, 0}, {0, 1, 0}, {0, 0, 1} },
+                "=", "<->", "<>", "iff"
+        ));
     }
 }

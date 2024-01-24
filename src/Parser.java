@@ -1,148 +1,111 @@
 import java.util.ArrayList;
 import java.lang.Math;
 
-
-
 class Parser{
-    public String GREEN = "\033[1m\033[32m";
-    public String RED = "\033[1m\033[31m";
-    public String PURPLE = "\033[1m\033[35m";
-    public String RESET = "\u001B[0m";
-    ArrayList<Boolean> results = new ArrayList<Boolean>();
-    int index;
+    
+    Table table;
+    int count = 1;
+    int truths = 0;
+    int falses = 0;
+    ArrayList<String> ops = new ArrayList<String>();
+
+    public Parser(ArrayList<Object> objects, ArrayList<Object> ids){
+
+        int row_size = (int)Math.pow(2,ids.size());
+        table = new Table(ids.size(), row_size);
 
 
-    int count_ids(ArrayList<Object> objects){
-        ArrayList<String> ids = new ArrayList<String>();
-        int count = 0;
-        for(int i = 0; i < objects.size(); i++){
-            if(objects.get(i).type == TokenType.ID){ 
-                if(!ids.contains(objects.get(i).value)){ 
-                    ids.add(objects.get(i).value);  count++; 
-                }
-            }
-        }
-        return count;
-    }
+        for(int i = 0; i < row_size; i++){
+            ArrayList<Object> ids_copy = new ArrayList<Object>();
+            ArrayList<Object> objects_copy = copy(objects, ids_copy);
+            
+            table.apply(ids_copy, i);
+            Object obj = parse(objects_copy);
+            boolean result = obj.result;
 
-    void create_table_for_ids(ArrayList<Object> objects, int size){
-        ArrayList<String> ids = new ArrayList<String>();
-        for(int i = 0; i < objects.size(); i++){
-            if(objects.get(i).type == TokenType.ID && !ids.contains(objects.get(i).value)){ 
-                objects.get(i).create_table(size, (int)Math.pow(2, ids.size()+1));
-                ids.add(objects.get(i).value);
-            }
-        }
-    } 
-
-
-    public Parser(ArrayList<Object> objects){
-        int truths = 0;
-        int falses = 0;
-        int size = (int)Math.pow(2, count_ids(objects));
-        for(index = 0; index < size; index++){
-            System.out.println("-------------------------------------------------------");
-            ArrayList<Object> objects_copy = new ArrayList<Object>(objects);
-            create_table_for_ids(objects, size); 
-            // set the results for each id
-            ArrayList<String> ids = new ArrayList<String>();
-            ArrayList<Boolean> ids_results = new ArrayList<Boolean>();
-            for(int i = 0; i < objects_copy.size(); i++){
-                if(objects_copy.get(i).type == TokenType.ID && !ids.contains(objects_copy.get(i).value)){ 
-                    objects_copy.get(i).set_result(index);
-                    ids.add(objects_copy.get(i).value);
-                    ids_results.add(objects_copy.get(i).table.get(index));
-                }
-            }
+            if(result){ System.out.println(Main.GREEN);}
+            else{ System.out.println(Main.RED); }
+            
+            for(Object id: ids_copy){ System.out.print(id.name + ": " + id.result + "\t"); }
             System.out.println();
-            // print the current logic expression
-            Object result = parse(objects_copy);
-            // print the results
-            if(result.result){ System.out.print(GREEN); }
-            else{ System.out.print(RED); }
-            System.out.print("\t");
-            for(int i = 0; i < ids_results.size(); i++){
-                System.out.print(ids.get(i) + " -> " + ids_results.get(i) + "\t");
-            }
-            System.out.println();
-            System.out.print("\t");
-            for(int i = 0; i < objects.size(); i++){
-                System.out.print(objects.get(i).value + " ");
-            }
-            System.out.println();
-            System.out.println("\tResult: " + result.result);
-            System.out.println(RESET);
-            // count the truths and falses
-            if(result.result){ truths++; }
+            for(String op: ops){ System.out.println(op); }
+            System.out.println("Result: " + result);
+            if(result){ truths++; }
             else{ falses++; }
+
+            count = 1;
+            ops.clear();
         }
-        System.out.println("-------------------------------------------------------");
-        System.out.println(PURPLE);
-        System.out.println("\tTotal: " + (truths + falses));
-        System.out.println("\tTruths: " + truths);
-        System.out.println("\tFalses: " + falses);
-        System.out.println(RESET);
+        System.out.println("\n"+ Main.PURPLE + truths + " truths\t" + falses + " falses\t" + (truths+falses) + " total" + Main.RESET);
+        System.out.println(Main.RESET);
     }
+
+
+    ArrayList<Object> copy(ArrayList<Object> objects, ArrayList<Object> ids){
+        ArrayList<Object> objects_copy = new ArrayList<Object>();
+
+        for(Object obj: objects){
+            Object id_copy = Object.find_object(ids, obj.name);
+            if(obj.type == OP_TYPE.PAREN){
+                Object obj_copy = Object.copy(obj);
+                obj_copy.children = copy(obj.children, ids);
+                objects_copy.add(obj_copy);
+            }
+            else if(id_copy != null && id_copy.name.equals(obj.name)){
+                objects_copy.add(id_copy); 
+            }
+            else{ 
+                Object obj_copy = Object.copy(obj);
+                objects_copy.add(obj_copy); 
+                if(obj.type == OP_TYPE.ID){ 
+                    ids.add(obj_copy); 
+                }
+            }
+
+        }
+        return objects_copy;
+    }
+
+
 
     Object parse(ArrayList<Object> objects){
-        int i = 0;
-        boolean not = false;
-        while(i < objects.size()){
-            Object obj = objects.get(i);
-            // handle sub expressions
-            if(obj.type == TokenType.OPEN_PAREN){
-                ArrayList<Object> sub_objects = new ArrayList<Object>();
-                int paren_count = 1;
-                objects.remove(i);
-
-                while(i < objects.size()){
-                    Object sub_obj = objects.get(i);
-                    objects.remove(i);
-                    if(sub_obj.type == TokenType.OPEN_PAREN){ paren_count++; }
-                    else if(sub_obj.type == TokenType.CLOSE_PAREN){ paren_count--; }
-                    if(paren_count == 0){ break; }
-                    sub_objects.add(sub_obj);
-                }
-                Object result = parse(sub_objects);
-                objects.add(i, result);
-                i = 0;
-            }
-            // handle nots
-            else if(obj.type == TokenType.NOT){
-                not = !not;
-                objects.remove(i);
+       int index = 0;
+       boolean not = false;
+       while(index < objects.size()){
+            Object obj = objects.get(index);
+            if(obj.type == OP_TYPE.PAREN){
+                Object result = parse(obj.children);
+                objects.set(index, result);
+                index = 0;
                 continue;
             }
-            // handle 2 value expression
-            else if(obj.type == TokenType.AND || obj.type == TokenType.OR || obj.type == TokenType.XOR){
-                Object obj1 = objects.get(i-1);
-                Object op  =  objects.get(i);   
-                Object obj2 = objects.get(i+1);
-                if(obj1.type != TokenType.RESULT && obj1.type != TokenType.ID){ i++; continue; }
-                if(obj2.type != TokenType.RESULT && obj2.type != TokenType.ID){ i++; continue; }
-                i--;
-                boolean result = false;
-                if(op.type == TokenType.AND){ result = obj1.get_value() && obj2.get_value(); }
-                else if(op.type == TokenType.OR){ result = obj1.get_value() || obj2.get_value(); }
-                else if(op.type == TokenType.XOR){ result = obj1.get_value() ^ obj2.get_value(); }
-                objects.remove(i);
-                objects.remove(i);
-                objects.remove(i);
-                objects.add(i, new Object("res" ,TokenType.RESULT));
-                objects.get(i).result = result;
-
+            else if(obj.type == OP_TYPE.NOT){
+                not = !not;
+                objects.remove(index);
+                continue;
+            }  
+            else if(obj.is_op()){
+                Object left = objects.get(index-1);
+                Object op = obj;
+                Object right = objects.get(index+1);
+                if(left.type != OP_TYPE.ID || right.type != OP_TYPE.ID){ index++; continue; }
+                Object result = new Object(""+count, OP_TYPE.ID);
+                result.result = Lexer.find_and_apply(op.type, left, right);
+                ops.add("\t"+count++ + ": " + left.name + "\t" + op.type + "\t" + right.name + "\t=\t" + result.result);
+                objects.set(index-1, result);
+                objects.remove(index);
+                objects.remove(index);
+                index = 0;
+                continue;
             }
-            // handle the value if they are "not"
-            else if(obj.type == TokenType.ID || obj.type == TokenType.RESULT){
+            else if(obj.type == OP_TYPE.ID){
                 if(not){ 
-                    obj.result = obj.result ? false : true ; not = false;
-                    i = 0;
-                    continue;
+                    obj.result = !obj.result; not = false; index = 0;
                 }
             }
-            
-            i++;
-        }
-        return objects.get(0);
+            index++;
+        
+       }
+       return objects.get(0);
     }
 }
