@@ -131,7 +131,7 @@ class Lexer{
                 ">", "->", "if"
         ));
         operators.add( Operator.new_op(
-                OP_TYPE.IF_AND_ONLY_IF,
+                OP_TYPE.IFF,
                 new int[][]{ {1, 1, 1}, {1, 0, 0}, {0, 1, 0}, {0, 0, 1} },
                 "=", "<->", "<>", "iff"
         ));
