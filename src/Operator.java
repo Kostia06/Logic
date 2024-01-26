@@ -7,7 +7,7 @@ enum OP_TYPE{
         AND, OR, XOR,
         IF, IFF, 
     OP_END,
-    ID, PAREN,
+    ID,
     NONE
 }
 

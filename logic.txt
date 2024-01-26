@@ -1,1 +1,2 @@
-a and b or c
+#F #H #G 
+(-F v -(H ^ F)) -> -G -> -G 

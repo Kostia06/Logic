@@ -2,9 +2,11 @@ import java.util.ArrayList;
 
 class Table{
     public boolean[][] table;
+    private int size;
 
     public Table(int size, int row_size){
         table = new boolean[size][row_size];
+        this.size = size;
         int increment = 2;
         for(int i = 0; i < size; i++){
             int half = (int)row_size/increment;
@@ -20,10 +22,11 @@ class Table{
         int half = row_size / increment;
     }
 
-    void apply(ArrayList<Object> objects, int index){
-        for(int i = 0; i < objects.size();i++){
-            Object obj = objects.get(i);
-            obj.result = table[i][index];
+    ArrayList<Boolean> apply(int index){
+        ArrayList<Boolean> results = new ArrayList<Boolean>();
+        for(int i = 0; i < size;i++){
+            results.add(table[i][index]);
         }
+        return results;
     }
 }

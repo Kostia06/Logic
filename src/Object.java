@@ -28,6 +28,10 @@ class Object{
         return type.ordinal() >= OP_TYPE.OP_START.ordinal() && type.ordinal() <= OP_TYPE.OP_END.ordinal();
     }
 
+    void add_not(String not){
+        name = not + name;
+    }
+
     void print(int depth){
         for(int i = 0; i < depth; i++){ System.out.print("\t"); }
         System.out.println(name + "\t" + type + "\t" + result);

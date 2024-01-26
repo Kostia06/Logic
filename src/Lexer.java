@@ -7,6 +7,7 @@ class Lexer{
     private int index = 0;
     private int largest_op = 3;
     private char c = ' '; 
+    private boolean declare = false;
     public static ArrayList<Operator> operators = new ArrayList<Operator>();
     public ArrayList<Object> objects = new ArrayList<Object>();
     public ArrayList<Object> ids = new ArrayList<Object>();
@@ -27,20 +28,7 @@ class Lexer{
             for(Operator op: operators){
                 if(op.find(str)){ 
                     Object obj;
-                    if(op.type == OP_TYPE.CLOSE_PAREN){
-                        ArrayList<Object> children = new ArrayList<Object>();
-                        while(objects.size() > 0){
-                            Object obj_child = objects.remove(objects.size()-1);
-                            if(obj_child.type == OP_TYPE.OPEN_PAREN){ break; }
-                            children.add(0,obj_child);
-                        }
-                        obj = new Object("()", OP_TYPE.PAREN);
-                        obj.children = children;
-
-                    }
-                    else{
-                        obj = new Object(str, op.type);
-                    }
+                    obj = new Object(str, op.type);
                     index += str.length();
                     c = logic.charAt(index-1);
                     objects.add(obj); 
@@ -64,6 +52,11 @@ class Lexer{
             if(obj == null){
                 obj = new Object(str, OP_TYPE.ID);
                 ids.add(obj);
+                if(declare){ 
+                    if(index < logic.length()){ index--; }
+                    declare = false;
+                    return true;
+                }
             }
             objects.add(obj);
             if(index < logic.length()){ index--; }
@@ -76,7 +69,9 @@ class Lexer{
         while(index < logic.length()){
             c = logic.charAt(index);
             if(handle_op() || handle_id()){ continue; }
-            else if(c == ' ' || c == '\t'){ index++; continue; }
+            else if(c == ' ' || c == '\t' || c == '\n'){ index++; continue; }
+            else if(c == '\\'){ index += 2; }
+            else if(c == '#'){ declare = true; index++; }
         }  
     }
 
@@ -112,12 +107,12 @@ class Lexer{
         operators.add( Operator.new_op(
                 OP_TYPE.AND,
                 new int[][]{ {1, 1, 1}, {1, 0, 0}, {0, 1, 0}, {0, 0, 0} }, 
-                "&", "^", "and"
+                "&","&&", "^", "and"
         ));
         operators.add( Operator.new_op(
                 OP_TYPE.OR,
                 new int[][]{ {1, 1, 1}, {1, 0, 1}, {0, 1, 1}, {0, 0, 0} }, 
-                "|", "v", "V", "or"
+                "|", "||", "v", "V", "or"
         ));
         operators.add( Operator.new_op(
                 OP_TYPE.XOR,
